@@ -24,21 +24,21 @@ enum WorkoutLocation {
     Gym,
 }
 
-fn parse_workout_location(src: &str) -> Result<WorkoutLocation, String> {
+fn parse_workout_location(src: &str) -> Result<WorkoutLocation, &str> {
     match src {
         "home" | "h" => Ok(WorkoutLocation::Home),
         "gym" | "g" => Ok(WorkoutLocation::Gym),
-        _ => Err("Invalid workout location: ".to_owned() + src)
+        _ => Err(src)
     }
 }
 
-fn parse_week(src: &str) -> Result<i8, String> {
+fn parse_week(src: &str) -> Result<i8, &str> {
     match src {
         "1" => Ok(1),
         "2" => Ok(2),
         "3" => Ok(3),
         "4" => Ok(4),
-        _ => Err("Invalid week: ".to_owned() + src)
+        _ => Err(src)
     }
 }
 
