@@ -56,6 +56,8 @@ static POWER_SNATCH_TO_SQUAT_RATIO: f32 = 0.6;
 static FRONT_SQUAT_TO_SQUAT_RATIO: f32 = 0.85;
 static OVERHEAD_SQUAT_TO_SQUAT_RATIO: f32 = 0.6;
 
+static INDENT: &str = "  ";
+
 /* 
  * ============================================================
  * CLI parsing types and helpers
@@ -191,7 +193,7 @@ fn scale(weight: i16, scale: f32) -> i16 {
 }
 
 /// Returns list of assistance exercises for the chosen lift and location.
-fn assistance_exercises(
+fn generate_assistance_exercises(
     primary_lift: &PrimaryLift,
     location: &WorkoutLocation,
     training_max: i16,  // only needed for squat assistance
@@ -284,12 +286,32 @@ fn main_and_assistance_exercises(
         ]
     };
 
-    // TODO main lifts
+    let assistance_exercises = generate_assistance_exercises(primary_lift, location, training_max);
 
-    let assistance_exercises = assistance_exercises(primary_lift, location, training_max);
+    let assistance_header = "Assistance:\n";
 
-    return "hey ".to_owned() + &primary_sets[0] + " " + &primary_sets[1] + " " + &primary_sets[2] + " " + &assistance_exercises[0] + " " + &assistance_exercises[1];
+    let mut ret = "".to_owned();
 
+    // If it's squat day, the first assistance exercise (power clean or power snatch)
+    // goes before the main lifts
+    if matches!(primary_lift, PrimaryLift::Squat) {
+        ret = ret + assistance_header + INDENT + &assistance_exercises[0] + "\n\n";
+    };
+
+    // Main lifts
+    ret = ret + "Main lifts:\n" +
+        INDENT + &primary_sets[0] + "\n" + 
+        INDENT + &primary_sets[1] + "\n" + 
+        INDENT + &primary_sets[2] + "\n\n";
+
+    // Assistance work (possibly less power clean or power snatch)
+    ret = ret + assistance_header + INDENT;
+    if !matches!(primary_lift, PrimaryLift::Squat) {
+        ret = ret + &assistance_exercises[0] + "\n" + INDENT;
+    }
+    ret = ret + &assistance_exercises[1];
+
+    return ret;
 }
 
 /* 
@@ -312,7 +334,7 @@ fn main() {
     println!();
 
     let core_exercises: Vec<&str> = pick_core_exercises(2);
-    println!("{}", core_exercises[0]);
+    println!("Core:\n  {}\n  {}", core_exercises[0], core_exercises[1]);
 
     println!();
 }
