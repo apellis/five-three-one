@@ -32,7 +32,7 @@ static LIMBER_11: &str = "Limber 11:
   5. rollover into V-sit, 10x
   6. rocking frog, 10x
   7. fire hydrant circles, 10x/direction/leg
-  8. mountain climberds, 10x/leg
+  8. mountain climbers, 10x/leg
   9. Cossack squats, 10x/side
   10. seated piriforis stretch, 30s/side
   11. rear-foot-elevated hip flexor stretch, 10x/side";
@@ -40,7 +40,7 @@ static LIMBER_11: &str = "Limber 11:
 // One or more core exercises are randomly sampled from this list
 static CORE_EXERCISES: [&str; 10] = [
     "ab-mat sit-up, 3x10",
-    "bird-dog, 3x10/side",
+    "bird dog, 3x10/side",
     "windshield wipers, 3x10/side",
     "kayaker, 3x10/side",
     "power point 3x30s/side",
