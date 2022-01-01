@@ -37,7 +37,7 @@ static LIMBER_11: &str = "Limber 11:
   10. seated piriforis stretch, 30s/side
   11. rear-foot-elevated hip flexor stretch, 10x/side";
 
-// One or more core exercises are randomly sampled from this list
+/// One or more core exercises are randomly sampled from this list
 static CORE_EXERCISES: [&str; 10] = [
     "ab-mat sit-up, 3x10",
     "bird dog, 3x10/side",
@@ -131,21 +131,27 @@ struct Cli {
     /// Primary lift for the week that will be done in the 5/3/1 rep pattern;
     /// valid values are "squat", "s", "bench-press", "bp", "deadlift", "dl",
     /// "press", and "p"
-    #[structopt(parse(try_from_str = parse_primary_lift))]
+    #[structopt(short, long, parse(try_from_str = parse_primary_lift))]
     primary_lift: PrimaryLift,
 
     /// Training max for primary lift this week; should initially be 90% of 1RM
     /// and increase by 5lb/cycle (press, bench press) or  10lb/cycle (squat,
     /// deadlift) thereafter
+    #[structopt(short, long)]
     training_max: i16,
 
     /// Week number (1-4) in the 5/3/1 cycle for the primary lift
-    #[structopt(parse(try_from_str = parse_week))]
+    #[structopt(short, long, parse(try_from_str = parse_week))]
     week: Week,
 
     /// Will this workout be at the gym or at home?
-    #[structopt(parse(try_from_str = parse_workout_location), default_value = "home")]
+    #[structopt(short, long, parse(try_from_str = parse_workout_location), default_value = "home")]
     location: WorkoutLocation,
+
+    /// Squat training max, needed on deadlift day to set a weight for front
+    /// and overhead squats
+    #[structopt(short, long, default_value = "0")]
+    squat_training_max: i16,
 }
 
 /* 
@@ -196,7 +202,7 @@ fn scale(weight: i16, scale: f32) -> i16 {
 fn generate_assistance_exercises(
     primary_lift: &PrimaryLift,
     location: &WorkoutLocation,
-    training_max: i16,  // only needed for squat assistance
+    squat_training_max: i16,  // only needed for squat assistance
 ) -> Vec<String> {
     let mut rng = rand::thread_rng();
 
@@ -204,15 +210,10 @@ fn generate_assistance_exercises(
         &PrimaryLift::Squat => {
             let mut n: u8 = rng.gen();
             let first = if n % 2 == 0
-                { set_str("power clean", scale(training_max, POWER_CLEAN_TO_SQUAT_RATIO), 0.5, 5, 3, false) }
-                else { set_str("power snatch", scale(training_max, POWER_SNATCH_TO_SQUAT_RATIO), 0.5, 5, 3, false) };
+                { set_str("power clean", scale(squat_training_max, POWER_CLEAN_TO_SQUAT_RATIO), 0.5, 5, 3, false) }
+                else { set_str("power snatch", scale(squat_training_max, POWER_SNATCH_TO_SQUAT_RATIO), 0.5, 5, 3, false) };
             let second = match location {
-                &WorkoutLocation::Home => {
-                    n = rng.gen();
-                    if n % 2 == 0
-                        { set_str("front squat", scale(training_max, FRONT_SQUAT_TO_SQUAT_RATIO), 0.5, 5, 10, false) }
-                        else { set_str("overhead squat", scale(training_max, OVERHEAD_SQUAT_TO_SQUAT_RATIO), 0.5, 5, 10, false) }
-                },
+                &WorkoutLocation::Home => "good mornings 5x12".to_owned(),
                 &WorkoutLocation::Gym => {
                     n = rng.gen();
                     if n % 2 == 0 { "leg curl 5x10".to_owned() } else { "dumbbell lunges 5x10 (per side, walking)".to_owned() }
@@ -231,10 +232,15 @@ fn generate_assistance_exercises(
             ]
         },
         &PrimaryLift::Deadlift => match location {
-            &WorkoutLocation::Home => vec![
-                "good mornings 5x12".to_owned(),
-                "pull-ups (or variation)".to_owned()
-            ],
+            &WorkoutLocation::Home => {
+                let n: u8 = rng.gen();
+                vec![
+                    if n % 2 == 0
+                        { set_str("front squat", scale(squat_training_max, FRONT_SQUAT_TO_SQUAT_RATIO), 0.5, 5, 10, false) }
+                        else { set_str("overhead squat", scale(squat_training_max, OVERHEAD_SQUAT_TO_SQUAT_RATIO), 0.5, 5, 10, false) },
+                    "pull-ups (or variation)".to_owned()
+                ]
+            },
             &WorkoutLocation::Gym => vec![
                 "back extension 5x12".to_owned(),
                 "dumbbell shrug 5x10".to_owned()
@@ -260,7 +266,8 @@ fn main_and_assistance_exercises(
     primary_lift: &PrimaryLift,
     training_max: i16,
     week: Week,
-    location: &WorkoutLocation
+    location: &WorkoutLocation,
+    squat_training_max: i16
 ) -> String {
     // Get weight and reps strings (e.g. "175 x3") for main lift
     let primary_sets: [String; 3] = match week {
@@ -286,7 +293,12 @@ fn main_and_assistance_exercises(
         ]
     };
 
-    let assistance_exercises = generate_assistance_exercises(primary_lift, location, training_max);
+    let assistance_exercises = generate_assistance_exercises(
+        primary_lift, location,
+        match primary_lift {
+            PrimaryLift::Squat => training_max,
+            _ => squat_training_max,
+        });
 
     let assistance_header = "Assistance:\n";
 
@@ -330,7 +342,8 @@ fn main() {
     println!();
 
     println!("{}", main_and_assistance_exercises(
-        &args.primary_lift, args.training_max, args.week, &args.location));
+        &args.primary_lift, args.training_max, args.week, &args.location,
+        args.squat_training_max));
     println!();
 
     let core_exercises: Vec<&str> = pick_core_exercises(2);
