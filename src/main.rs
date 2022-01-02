@@ -25,9 +25,9 @@ static WARM_UP: &str = "Warm up:
 
 /// Limber 11, done after warm-up and before main exercises, never changes
 static LIMBER_11: &str = "Limber 11:
-  1. foam roll IT band, 15s/leg
-  2. foam roll adductor, 15s/leg
-  3. lacrosse ball glutes and piriformis, 30s/leg
+  1. foam roll IT band, 15x/leg
+  2. foam roll adductor, 15x/leg
+  3. lacrosse ball glutes and piriformis, 60s/leg
   4. bent-knee iron cross, 10x/side
   5. rollover into V-sit, 10x
   6. rocking frog, 10x
