@@ -6,5 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+configparser = "3.0.0"
 rand = "0.8.4"
 structopt = "0.3.25"
+strum = "0.23.0"
+strum_macros = "0.23.1"
