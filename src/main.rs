@@ -1,6 +1,5 @@
 #![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
 extern crate strum;
-#[macro_use]
 extern crate strum_macros;
 
 use configparser::ini::Ini;
@@ -14,17 +13,6 @@ mod static_strings;
 
 use lifts::{Lift, Week, generate_primary_sets, generate_assistance_sets};
 use static_strings::{WARM_UP, LIMBER_11, CORE_EXERCISES};
-
-/* TODOs:
- *
- * 1. unit tests
- * 2. choice of weight for all assistance exercises
- * 3. verbose mode for exercise details
- * 4. data structure for particular exercises, so this can be factored into
- *    a library (suitable for, e.g., API integration) and a CLI that uses it
- */ 
-
-static INDENT: &str = "  ";
 
 /* 
  * ============================================================
