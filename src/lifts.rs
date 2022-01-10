@@ -62,7 +62,7 @@ impl fmt::Display for Lift {
             Lift::GoodMorning => "good morning",
             Lift::StraightLegDeadlift => "straight leg deadlift",
             Lift::CloseGripBenchPress => "close grip bench press",
-            Lift::InclinePress => "incline bench press",
+            Lift::InclinePress => "incline press",
         };
         write!(f, "{}", s)
     }
