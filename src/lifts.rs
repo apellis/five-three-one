@@ -54,7 +54,7 @@ impl fmt::Display for Lift {
             Lift::Squat => "squat",
             Lift::BenchPress => "bench press",
             Lift::Deadlift => "deadlift",
-            Lift::OverheadPress => "press",
+            Lift::OverheadPress => "overhead press",
             Lift::FrontSquat => "front squat",
             Lift::OverheadSquat => "overhead squat",
             Lift::PowerClean => "power clean",
