@@ -38,6 +38,8 @@ pub enum Lift {
     PowerClean,
     #[strum(serialize = "power_snatch", serialize = "ps")]
     PowerSnatch,
+    #[strum(serialize = "bulgarian_split_squat", serialize = "bss")]
+    BulgarianSplitSquat,
     // deadlift-like
     #[strum(serialize = "good_morning", serialize = "gm")]
     GoodMorning,
@@ -66,6 +68,7 @@ impl fmt::Display for Lift {
             Lift::OverheadSquat => "overhead squat",
             Lift::PowerClean => "power clean",
             Lift::PowerSnatch => "power snatch",
+            Lift::BulgarianSplitSquat => "bulgarian split squat",
             Lift::GoodMorning => "good morning",
             Lift::StraightLegDeadlift => "straight leg deadlift",
             Lift::RomanianDeadlift => "romanian deadlift",
@@ -195,7 +198,7 @@ pub fn generate_assistance_sets(
 
     // big assistance
     let big_assistance_lift = match primary_lift {
-        Lift::Squat => Lift::RackDeadlift,
+        Lift::Squat => Lift::BulgarianSplitSquat,
         Lift::Deadlift => Lift::FrontSquat,
         Lift::BenchPress => Lift::InclinePress,
         Lift::OverheadPress => Lift::CloseGripBenchPress,
@@ -229,18 +232,25 @@ pub fn generate_assistance_sets(
     // small assistance
     match primary_lift {
         Lift::Squat => {
-            ret.push("RDLs, up to 225, 5x10".to_owned());
+            ret.push("RDLs, up to 225, 3x10".to_owned());
+            let mut rng = rand::thread_rng();
+            let coin: bool = rng.gen();
+            ret.push(if coin {
+                "chin-ups, 2x10".to_owned()
+            } else {
+                "pull-ups, 2x10".to_owned()
+            });
         }
         Lift::Deadlift => {
-            ret.push("overhead squat, 5x10".to_owned());
+            ret.push("overhead squat, 3x10".to_owned());
         }
         Lift::BenchPress => {
             let mut rng = rand::thread_rng();
             let coin: bool = rng.gen();
             ret.push(if coin {
-                "chin-ups, 5x10".to_owned()
+                "chin-ups, 3x10".to_owned()
             } else {
-                "pull-ups, 5x10".to_owned()
+                "pull-ups, 3x10".to_owned()
             });
         }
         Lift::OverheadPress => {
