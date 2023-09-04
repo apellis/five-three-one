@@ -34,10 +34,6 @@ pub enum Lift {
     FrontSquat,
     #[strum(serialize = "overhead_squat", serialize = "os", serialize = "ohs")]
     OverheadSquat,
-    #[strum(serialize = "power_clean", serialize = "pc")]
-    PowerClean,
-    #[strum(serialize = "power_snatch", serialize = "ps")]
-    PowerSnatch,
     #[strum(serialize = "bulgarian_split_squat", serialize = "bss")]
     BulgarianSplitSquat,
     // deadlift-like
@@ -49,6 +45,10 @@ pub enum Lift {
     RomanianDeadlift,
     #[strum(serialize = "rack_deadlift", serialize = "radl")]
     RackDeadlift,
+    #[strum(serialize = "power_clean", serialize = "pc")]
+    PowerClean,
+    #[strum(serialize = "power_snatch", serialize = "ps")]
+    PowerSnatch,
     // bench press-like
     #[strum(serialize = "close_grip_bench_press", serialize = "cgbp")]
     CloseGripBenchPress,
@@ -198,7 +198,7 @@ pub fn generate_assistance_sets(
 
     // big assistance
     let big_assistance_lift = match primary_lift {
-        Lift::Squat => Lift::BulgarianSplitSquat,
+        Lift::Squat => Lift::PowerClean,
         Lift::Deadlift => Lift::FrontSquat,
         Lift::BenchPress => Lift::InclinePress,
         Lift::OverheadPress => Lift::CloseGripBenchPress,
@@ -206,23 +206,28 @@ pub fn generate_assistance_sets(
             panic!("Invalid primary lift: {}", &primary_lift);
         }
     };
-    match week {
-        Week::Week1 => {
+    match (big_assistance_lift, week) {
+        (Lift::PowerClean, _) => {
+            ret.push(make_set_str(big_assistance_lift, 0.65, 1, 3));
+            ret.push(make_set_str(big_assistance_lift, 0.75, 1, 3));
+            ret.push(make_set_str(big_assistance_lift, 0.85, 1, 3));
+        }
+        (_, Week::Week1) => {
             ret.push(make_set_str(big_assistance_lift, 0.5, 1, 10));
             ret.push(make_set_str(big_assistance_lift, 0.6, 1, 10));
             ret.push(make_set_str(big_assistance_lift, 0.7, 1, 10));
         }
-        Week::Week2 => {
+        (_, Week::Week2) => {
             ret.push(make_set_str(big_assistance_lift, 0.6, 1, 8));
             ret.push(make_set_str(big_assistance_lift, 0.7, 1, 8));
             ret.push(make_set_str(big_assistance_lift, 0.8, 1, 6));
         }
-        Week::Week3 => {
+        (_, Week::Week3) => {
             ret.push(make_set_str(big_assistance_lift, 0.65, 1, 5));
             ret.push(make_set_str(big_assistance_lift, 0.75, 1, 5));
             ret.push(make_set_str(big_assistance_lift, 0.85, 1, 5));
         }
-        Week::Week4 => {
+        (_, Week::Week4) => {
             ret.push(make_set_str(big_assistance_lift, 0.4, 1, 5));
             ret.push(make_set_str(big_assistance_lift, 0.5, 1, 5));
             ret.push(make_set_str(big_assistance_lift, 0.6, 1, 5));
