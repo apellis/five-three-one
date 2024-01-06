@@ -207,6 +207,11 @@ pub fn generate_assistance_sets(
         }
     };
     match (big_assistance_lift, week) {
+        (Lift::PowerClean, Week::Week4) => {
+            ret.push(make_set_str(big_assistance_lift, 0.5, 1, 3));
+            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 3));
+            ret.push(make_set_str(big_assistance_lift, 0.7, 1, 3));
+        }
         (Lift::PowerClean, _) => {
             ret.push(make_set_str(big_assistance_lift, 0.65, 1, 3));
             ret.push(make_set_str(big_assistance_lift, 0.75, 1, 3));
