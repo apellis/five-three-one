@@ -57,6 +57,25 @@ pub enum Lift {
     InclinePress,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum WorkoutError {
+    Config(String),
+    MissingTrainingMax { lift: Lift },
+}
+
+impl fmt::Display for WorkoutError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            WorkoutError::Config(message) => write!(f, "{}", message),
+            WorkoutError::MissingTrainingMax { lift } => {
+                write!(f, "Missing training max for {}", lift)
+            }
+        }
+    }
+}
+
+impl std::error::Error for WorkoutError {}
+
 impl fmt::Display for Lift {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s: &str = match self {
@@ -112,7 +131,7 @@ impl fmt::Display for SetGroup {
     }
 }
 
-/// Scales integer weight by floating point multiplier and converts back to ingeteger weight.
+/// Scales integer weight by floating point multiplier and converts back to integer weight.
 pub fn scale(weight: i16, scale: f32) -> i16 {
     return (weight as f32 * scale).round() as i16;
 }
@@ -122,9 +141,11 @@ pub fn generate_primary_sets(
     lift: &Lift,
     week: &Week,
     training_maxes: &HashMap<Lift, i16>,
-) -> Vec<String> {
+) -> Result<Vec<String>, WorkoutError> {
     let mut ret = vec![];
-    let training_max = training_maxes.get(&lift).unwrap().clone();
+    let training_max = *training_maxes
+        .get(lift)
+        .ok_or(WorkoutError::MissingTrainingMax { lift: *lift })?;
 
     let make_set_str = |scalar: f32, sets: i8, reps: i8, amrap: bool| -> String {
         SetGroup {
@@ -173,7 +194,73 @@ pub fn generate_primary_sets(
         }
     }
 
-    ret
+    Ok(ret)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
+    use std::collections::HashMap;
+
+    fn baseline_training_maxes() -> HashMap<Lift, i16> {
+        let mut map = HashMap::new();
+        map.insert(Lift::Squat, 325);
+        map.insert(Lift::BenchPress, 235);
+        map.insert(Lift::Deadlift, 365);
+        map.insert(Lift::OverheadPress, 170);
+        map.insert(Lift::PowerClean, 205);
+        map.insert(Lift::FrontSquat, 215);
+        map.insert(Lift::InclinePress, 215);
+        map.insert(Lift::CloseGripBenchPress, 215);
+        map
+    }
+
+    #[test]
+    fn generates_expected_week_one_primary_sets() {
+        let training_maxes = baseline_training_maxes();
+        let sets = generate_primary_sets(&Lift::Squat, &Week::Week1, &training_maxes).unwrap();
+        assert_eq!(
+            sets,
+            vec![
+                "squat 130 x5",
+                "squat 163 x5",
+                "squat 211 x5",
+                "squat 244 x5",
+                "squat 276 x5+",
+            ]
+        );
+    }
+
+    #[test]
+    fn assistance_sets_require_training_max() {
+        let mut training_maxes = HashMap::new();
+        training_maxes.insert(Lift::Squat, 325);
+        let mut rng = StdRng::seed_from_u64(1);
+        let err = generate_assistance_sets(&Lift::Squat, &Week::Week1, &training_maxes, &mut rng)
+            .unwrap_err();
+        assert_eq!(
+            err,
+            WorkoutError::MissingTrainingMax {
+                lift: Lift::PowerClean
+            }
+        );
+    }
+
+    #[test]
+    fn assistance_sets_are_deterministic_with_seed() {
+        let training_maxes = baseline_training_maxes();
+        let mut rng_a = StdRng::seed_from_u64(42);
+        let mut rng_b = StdRng::seed_from_u64(42);
+        let sets_a =
+            generate_assistance_sets(&Lift::BenchPress, &Week::Week2, &training_maxes, &mut rng_a)
+                .unwrap();
+        let sets_b =
+            generate_assistance_sets(&Lift::BenchPress, &Week::Week2, &training_maxes, &mut rng_b)
+                .unwrap();
+        assert_eq!(sets_a, sets_b);
+    }
 }
 
 /// Simplest strength template (SST) set generator
@@ -181,19 +268,22 @@ pub fn generate_assistance_sets(
     primary_lift: &Lift,
     week: &Week,
     training_maxes: &HashMap<Lift, i16>,
-) -> Vec<String> {
+    rng: &mut impl Rng,
+) -> Result<Vec<String>, WorkoutError> {
     let mut ret = vec![];
 
-    let make_set_str = |lift: Lift, scalar: f32, sets: i8, reps: i8| -> String {
-        let training_max = training_maxes.get(&lift).unwrap().clone();
-        SetGroup {
+    let make_set_str = |lift: Lift, scalar: f32, sets: i8, reps: i8| -> Result<String, WorkoutError> {
+        let training_max = *training_maxes
+            .get(&lift)
+            .ok_or(WorkoutError::MissingTrainingMax { lift })?;
+        Ok(SetGroup {
             lift,
             weight: scale(training_max, scalar),
             sets,
             reps,
             amrap: false,
         }
-        .to_string()
+        .to_string())
     };
 
     // big assistance
@@ -203,39 +293,42 @@ pub fn generate_assistance_sets(
         Lift::BenchPress => Lift::InclinePress,
         Lift::OverheadPress => Lift::CloseGripBenchPress,
         _ => {
-            panic!("Invalid primary lift: {}", &primary_lift);
+            return Err(WorkoutError::Config(format!(
+                "Unsupported primary lift {}",
+                primary_lift
+            )))
         }
     };
     match (big_assistance_lift, week) {
         (Lift::PowerClean, Week::Week4) => {
-            ret.push(make_set_str(big_assistance_lift, 0.5, 1, 3));
-            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 3));
-            ret.push(make_set_str(big_assistance_lift, 0.7, 1, 3));
+            ret.push(make_set_str(big_assistance_lift, 0.5, 1, 3)?);
+            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 3)?);
+            ret.push(make_set_str(big_assistance_lift, 0.7, 1, 3)?);
         }
         (Lift::PowerClean, _) => {
-            ret.push(make_set_str(big_assistance_lift, 0.65, 1, 3));
-            ret.push(make_set_str(big_assistance_lift, 0.75, 1, 3));
-            ret.push(make_set_str(big_assistance_lift, 0.85, 1, 3));
+            ret.push(make_set_str(big_assistance_lift, 0.65, 1, 3)?);
+            ret.push(make_set_str(big_assistance_lift, 0.75, 1, 3)?);
+            ret.push(make_set_str(big_assistance_lift, 0.85, 1, 3)?);
         }
         (_, Week::Week1) => {
-            ret.push(make_set_str(big_assistance_lift, 0.5, 1, 10));
-            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 10));
-            ret.push(make_set_str(big_assistance_lift, 0.7, 1, 10));
+            ret.push(make_set_str(big_assistance_lift, 0.5, 1, 10)?);
+            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 10)?);
+            ret.push(make_set_str(big_assistance_lift, 0.7, 1, 10)?);
         }
         (_, Week::Week2) => {
-            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 8));
-            ret.push(make_set_str(big_assistance_lift, 0.7, 1, 8));
-            ret.push(make_set_str(big_assistance_lift, 0.8, 1, 6));
+            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 8)?);
+            ret.push(make_set_str(big_assistance_lift, 0.7, 1, 8)?);
+            ret.push(make_set_str(big_assistance_lift, 0.8, 1, 6)?);
         }
         (_, Week::Week3) => {
-            ret.push(make_set_str(big_assistance_lift, 0.65, 1, 5));
-            ret.push(make_set_str(big_assistance_lift, 0.75, 1, 5));
-            ret.push(make_set_str(big_assistance_lift, 0.85, 1, 5));
+            ret.push(make_set_str(big_assistance_lift, 0.65, 1, 5)?);
+            ret.push(make_set_str(big_assistance_lift, 0.75, 1, 5)?);
+            ret.push(make_set_str(big_assistance_lift, 0.85, 1, 5)?);
         }
         (_, Week::Week4) => {
-            ret.push(make_set_str(big_assistance_lift, 0.4, 1, 5));
-            ret.push(make_set_str(big_assistance_lift, 0.5, 1, 5));
-            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 5));
+            ret.push(make_set_str(big_assistance_lift, 0.4, 1, 5)?);
+            ret.push(make_set_str(big_assistance_lift, 0.5, 1, 5)?);
+            ret.push(make_set_str(big_assistance_lift, 0.6, 1, 5)?);
         }
     }
 
@@ -243,7 +336,6 @@ pub fn generate_assistance_sets(
     match primary_lift {
         Lift::Squat => {
             ret.push("RDLs, up to 225, 3x10".to_owned());
-            let mut rng = rand::thread_rng();
             let coin: bool = rng.gen();
             ret.push(if coin {
                 "chin-ups, 2x10".to_owned()
@@ -255,7 +347,6 @@ pub fn generate_assistance_sets(
             ret.push("overhead squat, 3x10".to_owned());
         }
         Lift::BenchPress => {
-            let mut rng = rand::thread_rng();
             let coin: bool = rng.gen();
             ret.push(if coin {
                 "chin-ups, 3x10".to_owned()
@@ -264,7 +355,6 @@ pub fn generate_assistance_sets(
             });
         }
         Lift::OverheadPress => {
-            let mut rng = rand::thread_rng();
             let coin: bool = rng.gen();
             ret.push(if coin {
                 "barbell 21s x3".to_owned()
@@ -273,9 +363,12 @@ pub fn generate_assistance_sets(
             });
         }
         _ => {
-            panic!("Invalid primary lift: {}", &primary_lift);
+            return Err(WorkoutError::Config(format!(
+                "Unsupported primary lift {}",
+                primary_lift
+            )));
         }
     }
 
-    ret
+    Ok(ret)
 }
