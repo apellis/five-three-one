@@ -335,7 +335,7 @@ pub fn generate_assistance_sets(
     // small assistance
     match primary_lift {
         Lift::Squat => {
-            ret.push("RDLs, up to 225, 3x10".to_owned());
+            ret.push("RDLs, up to 225, 2x10".to_owned());
             let coin: bool = rng.gen();
             ret.push(if coin {
                 "chin-ups, 2x10".to_owned()
