@@ -344,7 +344,8 @@ pub fn generate_assistance_sets(
             });
         }
         Lift::Deadlift => {
-            ret.push("overhead squat, 3x10".to_owned());
+            let sets = if week == &Week::Week4 { 2 } else { 3 };
+            ret.push(format!("overhead squat, {}x10", sets));
         }
         Lift::BenchPress => {
             let coin: bool = rng.gen();
@@ -356,8 +357,15 @@ pub fn generate_assistance_sets(
         }
         Lift::OverheadPress => {
             let coin: bool = rng.gen();
+            let is_week4 = week == &Week::Week4;
             ret.push(if coin {
-                "barbell 21s x3".to_owned()
+                if is_week4 {
+                    "barbell 21s x2".to_owned()
+                } else {
+                    "barbell 21s x3".to_owned()
+                }
+            } else if is_week4 {
+                "Kroc row, 2x20".to_owned()
             } else {
                 "Kroc row, 3x20".to_owned()
             });
