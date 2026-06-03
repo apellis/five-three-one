@@ -1,0 +1,13 @@
+[default]
+squat = 325
+deadlift = 365
+bench_press = 235
+overhead_press = 170
+
+# Major assistance
+front_squat = 215
+good_morning = 215
+incline_press = 215
+close_grip_bench_press = 215
+bulgarian_split_squat = 95
+power_clean = 205
