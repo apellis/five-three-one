@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fmt;
 use strum_macros::EnumString;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Week {
     Week1,
     Week2,
@@ -16,12 +16,13 @@ pub enum Lift {
     /* Primary */
     #[strum(serialize = "squat", serialize = "s")]
     Squat,
-    #[strum(serialize = "bench_press", serialize = "b", serialize = "bp")]
+    #[strum(serialize = "bench_press", serialize = "bench-press", serialize = "b", serialize = "bp")]
     BenchPress,
     #[strum(serialize = "deadlift", serialize = "d", serialize = "dl")]
     Deadlift,
     #[strum(
         serialize = "overhead_press",
+        serialize = "overhead-press",
         serialize = "o",
         serialize = "p",
         serialize = "ohp"
@@ -55,6 +56,10 @@ pub enum Lift {
     // overhead press-like
     #[strum(serialize = "incline_press", serialize = "ip")]
     InclinePress,
+}
+
+impl Lift {
+    pub const PRIMARY_LIFTS: [Lift; 4] = [Lift::Squat, Lift::BenchPress, Lift::Deadlift, Lift::OverheadPress];
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -122,7 +127,7 @@ impl fmt::Display for SetGroup {
         s += "x";
         s += &self.reps.to_string();
 
-        // "...+"?
+        // "...+"
         if self.amrap {
             s += "+";
         }
@@ -234,6 +239,37 @@ mod tests {
     }
 
     #[test]
+    fn generates_expected_week_three_primary_sets() {
+        let training_maxes = baseline_training_maxes();
+        let sets = generate_primary_sets(&Lift::Squat, &Week::Week3, &training_maxes).unwrap();
+        assert_eq!(
+            sets,
+            vec![
+                "squat 130 x5",
+                "squat 163 x5",
+                "squat 195 x3",
+                "squat 244 x5",
+                "squat 276 x3",
+                "squat 309 x1+",
+            ]
+        );
+    }
+
+    #[test]
+    fn generates_expected_week_four_primary_sets() {
+        let training_maxes = baseline_training_maxes();
+        let sets = generate_primary_sets(&Lift::Squat, &Week::Week4, &training_maxes).unwrap();
+        assert_eq!(
+            sets,
+            vec![
+                "squat 130 x5",
+                "squat 163 x5",
+                "squat 195 x5",
+            ]
+        );
+    }
+
+    #[test]
     fn assistance_sets_require_training_max() {
         let mut training_maxes = HashMap::new();
         training_maxes.insert(Lift::Squat, 325);
@@ -260,6 +296,25 @@ mod tests {
             generate_assistance_sets(&Lift::BenchPress, &Week::Week2, &training_maxes, &mut rng_b)
                 .unwrap();
         assert_eq!(sets_a, sets_b);
+    }
+
+    #[test]
+    fn squat_assistance_matches_expected_scales_and_shape() {
+        let training_maxes = baseline_training_maxes();
+        let mut rng = StdRng::seed_from_u64(0);
+        let sets = generate_assistance_sets(&Lift::Squat, &Week::Week2, &training_maxes, &mut rng)
+            .unwrap();
+        assert_eq!(
+            &sets[0..3],
+            &[
+                "power clean 133 x3",
+                "power clean 154 x3",
+                "power clean 174 x3",
+            ]
+        );
+        assert_eq!(sets[3], "RDLs, up to 225, 2x10");
+        assert!(sets[4] == "pull-ups, 2x10" || sets[4] == "chin-ups, 2x10");
+        assert_eq!(sets.len(), 5);
     }
 }
 
