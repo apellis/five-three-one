@@ -32,11 +32,19 @@ struct TrainingMaxConfig {
  */
 
 fn parse_primary_lift(src: &str) -> Result<Lift, String> {
-    Lift::from_str(src).map_err(|_| {
+    let lift = Lift::from_str(src).map_err(|_| {
         format!(
             "Invalid primary lift '{src}'. Valid values are: squat/s/bench-press/bench_press/b/bp/deadlift/d/dl/overhead-press/o/ohp/p."
         )
-    })
+    })?;
+
+    if !Lift::PRIMARY_LIFTS.contains(&lift) {
+        return Err(format!(
+            "Invalid primary lift '{src}'. Valid values are: squat/s/bench-press/bench_press/b/bp/deadlift/d/dl/overhead-press/o/ohp/p."
+        ));
+    }
+
+    Ok(lift)
 }
 
 fn parse_week(src: &str) -> Result<Week, String> {
@@ -47,6 +55,26 @@ fn parse_week(src: &str) -> Result<Week, String> {
         "4" => Ok(Week::Week4),
         _ => Err("week must be 1, 2, 3, or 4".to_owned()),
     }
+}
+
+fn validate_required_assistance_training_max(
+    primary_lift: &Lift,
+    training_maxes: &HashMap<Lift, i16>,
+) -> Result<(), WorkoutError> {
+    let required_lift = match primary_lift {
+        Lift::Squat => Lift::PowerClean,
+        Lift::Deadlift => Lift::FrontSquat,
+        Lift::BenchPress => Lift::InclinePress,
+        Lift::OverheadPress => Lift::CloseGripBenchPress,
+        _ => return Ok(()),
+    };
+
+    training_maxes
+        .get(&required_lift)
+        .map(|_| ())
+        .ok_or(WorkoutError::MissingTrainingMax { lift: required_lift })?;
+
+    Ok(())
 }
 
 #[derive(Parser, Debug)]
@@ -190,6 +218,7 @@ fn run() -> Result<(), WorkoutError> {
         .unwrap_or_else(|| Path::new(DEFAULT_TRAINING_MAX_FILE));
 
     let training_maxes = load_training_maxes_from_file(config_path)?;
+    validate_required_assistance_training_max(&args.primary_lift, &training_maxes)?;
 
     let mut rng = match args.seed {
         Some(seed) => StdRng::seed_from_u64(seed),
@@ -286,6 +315,13 @@ mod tests {
     }
 
     #[test]
+    fn parse_primary_lift_rejects_assistance_lifts() {
+        assert!(parse_primary_lift("front_squat").is_err());
+        assert!(parse_primary_lift("power_clean").is_err());
+        assert!(parse_primary_lift("close_grip_bench_press").is_err());
+    }
+
+    #[test]
     fn parse_training_maxes_from_toml_requires_primary_lifts() {
         let config = "[default]
 squat = 325
@@ -294,6 +330,23 @@ deadlift = 365";
         let err = parse_training_maxes_from_str(config, "test-training_max.toml").unwrap_err();
         assert!(err.to_string().contains("Missing required primary lift training max"));
         assert!(err.to_string().contains("overhead press"));
+    }
+
+    #[test]
+    fn validate_required_assistance_training_max_for_primary_lift() {
+        let config = "[default]
+squat = 325
+bench_press = 235
+deadlift = 365
+overhead_press = 170";
+        let training_maxes = parse_training_maxes_from_str(config, "training_max.toml").unwrap();
+        let err = validate_required_assistance_training_max(&Lift::Squat, &training_maxes).unwrap_err();
+        assert_eq!(
+            err,
+            WorkoutError::MissingTrainingMax {
+                lift: Lift::PowerClean
+            }
+        );
     }
 
     #[test]
